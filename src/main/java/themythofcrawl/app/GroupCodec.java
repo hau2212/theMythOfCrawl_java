@@ -84,6 +84,11 @@ public final class GroupCodec {
         m.put("captured_at_branch", g.capturedAtBranch());
         m.put("tags", new ArrayList<>(g.tags()));
         m.put("seen_by", new ArrayList<>(g.seenBy()));
+        List<Object> bugList = new ArrayList<>();
+        for (themythofcrawl.model.BugMark b : g.bugs()) {
+            bugList.add(b.toMap());
+        }
+        m.put("bugs", bugList);
         m.put("suspected_refresh", g.suspectedRefresh());
         m.put("triggered_by_action", g.triggeredByAction());
         PlaceHint h = g.placeHint();
@@ -170,6 +175,13 @@ public final class GroupCodec {
             }
         }
         g.setSeenBy(seen);
+        for (Object o : Json.list(m, "bugs")) {
+            if (o instanceof Map<?, ?> bm) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> mm = (Map<String, Object>) bm;
+                g.putBug(themythofcrawl.model.BugMark.fromMap(mm));
+            }
+        }
         g.setSuspectedRefresh(Json.bool(m, "suspected_refresh", false));
         g.setTriggeredByAction(Json.str(m, "triggered_by_action", null));
         Map<String, Object> hm = Json.obj(m, "hint");

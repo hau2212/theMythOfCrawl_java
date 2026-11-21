@@ -69,6 +69,7 @@ final class TeamCollabDialog {
         dlg.setMinimumSize(new Dimension(820, 560));
         dlg.setSize(new Dimension(940, 640));
         dlg.setLocationRelativeTo(owner);
+        Ui.fastScroll(dlg.getContentPane());
         dlg.setVisible(true);
     }
 

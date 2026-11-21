@@ -192,6 +192,7 @@ public final class ProxyInterceptDialog {
         Theme.track(dlg);
 
         activeFloating = new FloatingRef(new WeakReference<>(ui), new WeakReference<>(dlg), view.refresh());
+        Ui.fastScroll(dlg.getContentPane());
         dlg.setVisible(true);
     }
 

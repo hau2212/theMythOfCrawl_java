@@ -214,6 +214,9 @@ final class TreeMenus {
                 m.add(Ui.item("Sửa Request & Gửi lại (Composer)...", t -> Icons.edit(t.info.text()),
                         () -> RequestComposerDialog.showFloating(c, engine, g, nodeRole, () -> ui.tick(true))));
                 m.add(ActionMenus.buildForApi(c, engine, g, nodeRole != null ? List.of(nodeRole) : null, () -> ui.tick(true)));
+                m.add(Ui.item("Đánh dấu lỗi..." + (g.openBugCount() > 0 ? "   (đang có " + g.openBugCount() + ")" : ""),
+                        t -> Icons.alertMark(t.danger.text(), 13), () -> BugsTab.BugMarkDialog.mark(ui, g, null,
+                                nodeRole != null && !nodeRole.original() ? nodeRole.roleKey() : "", "")));
                 m.add(Ui.item("Đẩy API #" + g.gid() + " sang Burp Repeater (Gọn)", Icons::repeater, () -> ui.push(g)));
                 String label = engine.copyLabel(g, false);
                 m.add(Ui.item("Copy STT + Path   (" + (label.length() > 60 ? label.substring(0, 60) : label) + ")",

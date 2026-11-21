@@ -66,6 +66,7 @@ public final class ExcelPlaceholderDialog {
         dlg.setMinimumSize(new Dimension(920, 620));
         dlg.setSize(1080, 700);
         dlg.setLocationRelativeTo(parent);
+        Ui.fastScroll(dlg.getContentPane());
         dlg.setVisible(true);
     }
 

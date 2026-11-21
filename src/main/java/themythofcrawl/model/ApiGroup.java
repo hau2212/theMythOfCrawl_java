@@ -49,6 +49,8 @@ public final class ApiGroup {
     private volatile TargetEntry target;
     private final Map<String, Boolean> roleOverrides = new LinkedHashMap<>();
     private final LinkedHashSet<String> tags = new LinkedHashSet<>();
+    /** V_8.2: bugs marked on this API ("Lỗi"). */
+    private final java.util.ArrayList<BugMark> bugs = new java.util.ArrayList<>();
     /** V_7.0: roles whose own UI reached this endpoint while crawling ("Thấy bởi"). */
     private final LinkedHashSet<String> seenBy = new LinkedHashSet<>();
     private volatile boolean suspectedRefresh;
@@ -200,6 +202,38 @@ public final class ApiGroup {
 
     public void setCapturedAtBranch(String b) {
         this.capturedAtBranch = b;
+    }
+
+    public synchronized java.util.List<BugMark> bugs() {
+        return java.util.List.copyOf(bugs);
+    }
+
+    public synchronized int openBugCount() {
+        int n = 0;
+        for (BugMark b : bugs) {
+            if (b.status().open()) {
+                n++;
+            }
+        }
+        return n;
+    }
+
+    /** Adds or replaces (same id) a bug mark. */
+    public synchronized void putBug(BugMark b) {
+        if (b == null) {
+            return;
+        }
+        for (int i = 0; i < bugs.size(); i++) {
+            if (bugs.get(i).id().equals(b.id())) {
+                bugs.set(i, b);
+                return;
+            }
+        }
+        bugs.add(b);
+    }
+
+    public synchronized boolean removeBug(String bugId) {
+        return bugs.removeIf(b -> b.id().equals(bugId));
     }
 
     public synchronized Set<String> seenBy() {

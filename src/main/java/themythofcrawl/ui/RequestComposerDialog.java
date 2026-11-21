@@ -179,6 +179,7 @@ public final class RequestComposerDialog {
         dlg.setMinimumSize(new Dimension(920, 580));
         dlg.setSize(UiPrefs.composerSize(prefs));
         dlg.setLocationRelativeTo(owner);
+        Ui.fastScroll(dlg.getContentPane());
         dlg.setVisible(true);
     }
 

@@ -265,7 +265,7 @@ public final class UiPreview {
                 JFrame f = new JFrame("gate");
                 ProxyGateDialog.Gate gate = new ProxyGateDialog.Gate(e, e.groups().get(0), null);
                 f.getContentPane().add(new javax.swing.JScrollPane(gate.panel));
-                f.setSize(new Dimension(940, 1060));
+                f.setSize(new Dimension(860, 720));
                 f.setVisible(true);
                 fr[0].setSize(new Dimension(1500, 120));
                 fr[0].validate();
@@ -277,6 +277,19 @@ public final class UiPreview {
                     shot(jf, out.resolve("only_gate.png").toFile());
                 }
             }
+            System.exit(0);
+        }
+        if ("wb".equals(only)) {
+            SwingUtilities.invokeAndWait(() -> {
+                JFrame f = new JFrame("wb");
+                f.getContentPane().add(ActionWorkbenchDialog.buildWorkbenchPanel(null, e, null, null, 1, null, null));
+                f.setSize(new Dimension(1120, 730));
+                f.setVisible(true);
+                fr[0].dispose();
+                fr[0] = f;
+            });
+            Thread.sleep(900);
+            shot(fr[0], out.resolve("only_wb.png").toFile());
             System.exit(0);
         }
         if ("dp".equals(only)) {

@@ -1,9 +1,17 @@
-# theMythOf-JCrawl (Java / Montoya) - V_7.1_beta
+# theMythOf-JCrawl (Java / Montoya) - V_7.2_beta
 
 Burp Suite extension viết bằng **Java 21 + Montoya API**: bản viết lại toàn bộ của
 [theMythOf-PCrawl](https://github.com/hau2212/theMythOfCrawl) (bản Python / Jython) - đủ mọi chức năng,
 nhanh hơn, có lưu dữ liệu ra đĩa (workspace), **không cần Jython**, và giao diện tự thích ứng cả
 **Light / Dark theme** của Burp Suite (icon vẽ hoàn toàn bằng Java2D, không phụ thuộc emoji).
+
+## Điểm mới V_7.2_beta
+
+- **Cổng chặn Proxy gọn**: chọn lựa chọn nào thì mới hiện cấu hình của lựa chọn đó (host / host + path / nhánh; giải thích của
+  đúng cách chặn đang chọn); phần Thử & luật khác thu gọn; vừa một màn hình, không tràn ngang.
+- **Cuộn chuột nhanh** trong mọi cửa sổ và tab (khoảng 3 dòng mỗi nấc thay vì 1 px).
+- **Action Workbench = màn hình nâng cao** của cùng danh sách luật mà nút "Chặn: …" và Bảo vệ dữ liệu dùng. Tab "CRUD" đổi tên thành
+  **Danh sách luật (thêm / sửa / xóa)**; form tạo luật chỉ mở khi bấm **Tạo luật mới** hoặc chọn 1 luật để sửa (nút **Ẩn form** để thu lại).
 
 ## Điểm mới V_7.1_beta — Cổng chặn Proxy trực quan
 

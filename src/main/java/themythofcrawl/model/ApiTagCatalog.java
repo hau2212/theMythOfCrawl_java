@@ -18,6 +18,8 @@ public final class ApiTagCatalog {
     public static final String TAG_INIT = "INIT";
     public static final String TAG_POLLING = "POLLING";
     public static final String TAG_ACTION_CORE = "ACTION-CORE";
+    /** V_8.2: set automatically while an API has an open bug mark. */
+    public static final String TAG_BUG = "BUG";
 
     public record TagDef(
             String id,
@@ -77,7 +79,8 @@ public final class ApiTagCatalog {
                 new TagDef(TAG_POLLING, "POLLING", "purple",
                         "API chạy ngầm định kỳ (heartbeat, thông báo, kiểm tra trạng thái)", true),
                 new TagDef(TAG_ACTION_CORE, "ACTION-CORE", "accent",
-                        "API hành động nghiệp vụ quan trọng cần ưu tiên rà soát phân quyền", true)
+                        "API hành động nghiệp vụ quan trọng cần ưu tiên rà soát phân quyền", true),
+                new TagDef(TAG_BUG, "BUG", "danger", "API đang có lỗi được đánh dấu (xem tab Lỗi)", true)
         );
     }
 

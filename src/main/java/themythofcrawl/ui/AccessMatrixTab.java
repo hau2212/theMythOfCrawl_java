@@ -78,6 +78,8 @@ final class AccessMatrixTab {
                 Ui.button("Xuất test case Excel", t -> Icons.excel(t.fg, 13), "Ma trận + danh sách test case BAC (.xlsx)",
                         this::exportExcel),
                 Ui.button("Xuất JSON", t -> Icons.save(t.fg), "Test case BAC dạng JSON cho server quản lý", this::exportJson),
+                Ui.button("Đánh dấu lỗi", t -> Icons.alertMark(t.danger.text(), 13),
+                        "Đánh dấu ô đang chọn là lỗi (tự điền loại, vai trò, bằng chứng)", this::markSelectedCell),
                 Ui.button("Đẩy sang Logger++", t -> Icons.send(t.fg), "Gửi lại API đã chọn 1 lần để Logger++ ghi lại",
                         () -> LoggerPushDialog.show(ui, selectedOrAll())));
         top.add(left, BorderLayout.CENTER);
@@ -227,6 +229,22 @@ final class AccessMatrixTab {
         }
         explain.setText(cell.role() + ": " + cell.verdict().label + " — " + cell.verdict().explain
                 + (cell.similarity() >= 0 ? " (giống bản gốc " + Math.round(cell.similarity() * 100) + "%)" : ""));
+    }
+
+    private void markSelectedCell() {
+        int r = table.getSelectedRow();
+        ApiGroup g = model.groupAt(r);
+        if (g == null) {
+            Ui.hint(table, "Chọn 1 ô vai trò (cột bên phải) của API cần đánh dấu");
+            return;
+        }
+        AccessMatrix.Cell cell = model.cellAt(r, table.getSelectedColumn());
+        themythofcrawl.model.BugMark.Type type = cell != null && cell.verdict() == AccessMatrix.Verdict.VIOLATION
+                ? themythofcrawl.model.BugMark.Type.PRIVILEGE : themythofcrawl.model.BugMark.Type.IDOR;
+        String note = cell == null ? "" : "Vai trò " + cell.role() + " gọi " + g.method() + " " + g.path() + " -> HTTP "
+                + cell.status() + (cell.similarity() >= 0 ? ", giống bản gốc " + Math.round(cell.similarity() * 100) + "%" : "")
+                + "; thấy trong UI bởi: " + (g.seenBy().isEmpty() ? "(chưa ai)" : String.join(", ", g.seenBy()));
+        BugsTab.BugMarkDialog.mark(ui, g, type, cell == null ? "" : cell.role(), note);
     }
 
     private List<ApiGroup> selectedOrAll() {

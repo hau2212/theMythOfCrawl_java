@@ -122,6 +122,7 @@ public final class ActionWorkbenchDialog {
         dlg.setMinimumSize(new Dimension(960, 620));
         dlg.setSize(new Dimension(1120, 730));
         dlg.setLocationRelativeTo(owner);
+        Ui.fastScroll(dlg.getContentPane());
         dlg.setVisible(true);
     }
 
@@ -147,7 +148,8 @@ public final class ActionWorkbenchDialog {
         String headTitle = focusGroup != null
                 ? "Action Workbench — " + Text.apiLabel(focusGroup.gid()) + " [" + focusGroup.method() + " " + focusGroup.path() + "]"
                 : "Action Workbench — Trung tâm Kiểm soát Chính sách Action";
-        String headSub = "Chặng 1: Cổng Proxy (Chặn chờ duyệt / Giữ 200 ảo / Cho qua)  ·  Chặng 2: Replay (Kho ID / Tạo->Xóa / Khóa 200). Xem Tab 5 nếu cần ví dụ nhanh!";
+        String headSub = "Màn hình NÂNG CAO của cùng danh sách luật mà nút \"Chặn: ...\" (Cổng chặn Proxy) và Bảo vệ dữ liệu dùng."
+                + " Thay đổi ở đây hiện ngay ở đó và ngược lại. Dùng hằng ngày: bấm nút \"Chặn: ...\" trên thanh trên cùng.";
         topWrap.add(Ui.dialogHeader(headTitle, headSub), BorderLayout.NORTH);
 
         JPanel statusStrip = new JPanel(new BorderLayout(8, 0));
@@ -250,7 +252,7 @@ public final class ActionWorkbenchDialog {
         advancedTabs.addTab("Khóa 200 OK & So sánh", buildLock200Tab(engine, focusGroup, targets, refreshBanner, onAfterAction));
 
         tabs.addTab("1. Chiến lược & Nhả", buildStrategyTab(dialogParent, engine, focusGroup, refreshBanner, onAfterAction));
-        tabs.addTab("2. Luật & Phạm vi (CRUD)", ActionLedgerTabBuilder.build(dialogParent, engine, focusGroup, prefillBranch, refreshBanner, onAfterAction));
+        tabs.addTab("2. Danh sách luật (thêm / sửa / xóa)", ActionLedgerTabBuilder.build(dialogParent, engine, focusGroup, prefillBranch, refreshBanner, onAfterAction));
         tabs.addTab("3. Dò & Căn chỉnh Proxy", ActionProtocolAuditTabBuilder.build(dialogParent, engine, refreshBanner, onAfterAction));
         tabs.addTab("4. Nâng cao (Kho ID · Tạo->Xóa · Khóa 200)", advancedTabs);
         tabs.addTab("5. Hướng dẫn & Ví dụ", ActionGuideTabBuilder.build(engine, focusGroup, refreshBanner, onAfterAction, idx -> {
@@ -914,7 +916,7 @@ public final class ActionWorkbenchDialog {
                 return;
             }
             focusGroup.setProducerGid(prod.gid());
-            engine.actionEngine().registerProducer(ActionEngine.extractResourceKey(focusGroup.path()), prod.gid());
+            engine.actionEngine().registerProducer(ActionEngine.familyKey(focusGroup.path()), prod.gid());
             refreshBanner.run();
             if (onAfterAction != null) onAfterAction.run();
             JOptionPane.showMessageDialog(Ui.ownerWindow(parent), "Đã liên kết " + Text.apiLabel(prod.gid())
@@ -930,7 +932,7 @@ public final class ActionWorkbenchDialog {
                     }
                     if (prod != null) {
                         focusGroup.setProducerGid(prod.gid());
-                        engine.actionEngine().registerProducer(ActionEngine.extractResourceKey(focusGroup.path()), prod.gid());
+                        engine.actionEngine().registerProducer(ActionEngine.familyKey(focusGroup.path()), prod.gid());
                     }
                     engine.sendWithProducer(focusGroup, prod != null ? prod.gid() : null, targets);
                     refreshBanner.run();

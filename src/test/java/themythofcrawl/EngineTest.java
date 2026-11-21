@@ -381,14 +381,14 @@ class EngineTest {
         assertEquals(200, delGroup.origStatus());
         bridge.status = 200;
 
-        // Method 3: Switch to next live ID from pool ("79") & send
+        // Method 3 (V_8.2): next live ID of the SAME family, IDs created by POST first ("91"), then list IDs
         assertTrue(e.sendWithNextLiveId(delGroup, List.of(delGroup.origResult())));
         waitSends();
-        assertEquals("/api/v1/orders/79", delGroup.path());
+        assertEquals("/api/v1/orders/91", delGroup.path());
         assertEquals(200, delGroup.origStatus());
 
-        // Method 3: Right-click manual ID replacement ("79" -> "88") at any time
-        e.replaceIdAndSend(delGroup, "79", "88", true, List.of(delGroup.origResult()));
+        // Method 3: Right-click manual ID replacement ("91" -> "88") at any time
+        e.replaceIdAndSend(delGroup, "91", "88", true, List.of(delGroup.origResult()));
         waitSends();
         assertEquals("/api/v1/orders/88", delGroup.path());
         assertEquals(200, delGroup.origStatus());

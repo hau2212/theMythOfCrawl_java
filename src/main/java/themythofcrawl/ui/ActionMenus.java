@@ -362,7 +362,7 @@ public final class ActionMenus {
                 return;
             }
             if (alsoAddToPoolChk.isSelected()) {
-                engine.actionEngine().addLiveId(ActionEngine.extractResourceKey(g.path()), newId);
+                engine.actionEngine().addLiveId(ActionEngine.familyKey(g.path()), newId, "nhập tay", g.method() + " " + g.path(), 0);
             }
             engine.replaceIdAndSend(g, oldId, newId, updateGroupChk.isSelected(), targets);
             dlg.dispose();

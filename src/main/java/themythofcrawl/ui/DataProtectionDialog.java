@@ -50,6 +50,7 @@ final class DataProtectionDialog {
         dlg.setContentPane(build(dlg, engine, focus, onChanged));
         dlg.setSize(new Dimension(980, 720));
         dlg.setLocationRelativeTo(parent);
+        Ui.fastScroll(dlg.getContentPane());
         dlg.setVisible(true);
     }
 

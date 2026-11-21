@@ -180,6 +180,10 @@ final class ActionLedgerTabBuilder {
         JButton exportBtn = Ui.secondaryBtn("Export JSON", null);
         JButton clearHitsBtn = Ui.secondaryBtn("Reset Hits", null);
 
+        JButton newRuleBtn = Ui.solidPrimary("Tạo luật mới", t -> Icons.plus(t.accent.onSolid()));
+        newRuleBtn.setToolTipText("Mở form bên dưới để tạo 1 luật mới (form chỉ hiện khi cần)");
+        tableBtns.add(newRuleBtn);
+        tableBtns.add(Box.createHorizontalStrut(6));
         tableBtns.add(toggleSelBtn);
         tableBtns.add(dupBtn);
         tableBtns.add(upBtn);
@@ -403,6 +407,9 @@ final class ActionLedgerTabBuilder {
 
         JPanel formBtnsRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 2));
         formBtnsRight.setOpaque(false);
+        JButton hideFormBtn = Ui.secondaryBtn("Ẩn form", null);
+        hideFormBtn.setToolTipText("Thu form lại để bảng luật chiếm hết chỗ");
+        formBtnsRight.add(hideFormBtn);
         formBtnsRight.add(clearFormBtn);
         formBtnsRight.add(updateBtn);
         formBtnsRight.add(createBtn);
@@ -435,6 +442,28 @@ final class ActionLedgerTabBuilder {
         centerSplit.setDividerSize(6);
         centerSplit.setBorder(null);
         root.add(centerSplit, BorderLayout.CENTER);
+        // V_7.2: progressive disclosure — the form only appears when creating or editing a rule
+        Runnable showForm = () -> {
+            if (!formCard.isVisible()) {
+                formCard.setVisible(true);
+                centerSplit.setDividerLocation(0.42);
+                root.revalidate();
+            }
+        };
+        formCard.setVisible(focusGroup != null || (prefillBranch != null && !prefillBranch.isBlank()));
+        newRuleBtn.addActionListener(Ui.safe(e -> {
+            clearFormBtn.doClick();
+            showForm.run();
+        }));
+        hideFormBtn.addActionListener(Ui.safe(e -> {
+            formCard.setVisible(false);
+            root.revalidate();
+        }));
+        ledgerTable.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting() && ledgerTable.getSelectedRow() >= 0) {
+                showForm.run();
+            }
+        });
 
         // ---- Bottom Per-API Effective Policy Explainer (when focusGroup != null)
         JPanel explainerPanel = new JPanel(new BorderLayout(8, 4));

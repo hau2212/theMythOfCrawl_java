@@ -934,15 +934,15 @@ class ThemedComponentTest {
 
                     // 2. Tab tooltips + Alt+1..7 tab switching (V_7.0: Cây first, Báo cáo / Cài đặt grouped)
                     assertTrue(ui.tabs.getToolTipTextAt(0).contains("Alt+1"));
-                    assertTrue(ui.tabs.getToolTipTextAt(6).contains("Alt+7"));
-                    assertTrue(ui.dispatchShortcut("alt 7"));
+                    assertTrue(ui.tabs.getToolTipTextAt(7).contains("Alt+8"));
+                    assertTrue(ui.dispatchShortcut("alt 8"));
                     ui.settingsTabs.setSelectedComponent(ui.settings.panel);
                     assertSame(ui.settings.panel, ui.selectedTab());
                     assertSame(ui.settings.searchField(), ui.activeSearchField());
                     ui.settingsTabs.setSelectedComponent(ui.log.panel);
                     assertSame(ui.log.panel, ui.selectedTab());
                     assertSame(ui.log.searchField(), ui.activeSearchField());
-                    assertTrue(ui.dispatchShortcut("alt 6"));
+                    assertTrue(ui.dispatchShortcut("alt 7"));
                     assertSame(ui.audit.panel, ui.tabs.getSelectedComponent());
                     ui.audit.tabs().setSelectedIndex(1);
                     assertSame(ui.audit.placeSearch(), ui.activeSearchField());

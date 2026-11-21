@@ -90,12 +90,10 @@ jobs:
 
           ### Điểm mới trong \`${TAG}\`
 
-          1. **Cổng chặn Proxy trực quan** thay cho menu chế độ trên thanh trên cùng: 1 công tắc + 3 câu hỏi — Chặn request nào? (mọi host / 1 host / 1 host + path / 1 nhánh) · Method nào? · Làm gì với request bị chặn? (Hỏi tôi trước / Giữ lại + trả 200 giả cho trình duyệt / Chặn hẳn).
-          2. **Sơ đồ luồng** Trình duyệt -> Burp + JCrawl -> Server vẽ đúng điều sẽ xảy ra, câu tóm tắt tiếng Việt, ô **Thử với 1 request** (không gửi gì).
-          3. Thanh trên cùng hiện đúng trạng thái: \`Chặn: TẮT\` / \`Chặn: Hỏi trước\` / \`Chặn: 200 giả\` / \`Chặn: N chờ duyệt\`.
-          4. **Bảo vệ dữ liệu**: câu 1 trỏ về Cổng chặn; câu 2 có thẻ **Đầu vào -> Đầu ra** cho từng cách gửi lại khi ID đã bị xóa.
-          5. **Nút bấm luôn có phản hồi**: thiếu lựa chọn thì nhắc "Chọn … trước"; lỗi khi bấm hiện cạnh nút + ghi Log (không còn bị nuốt); dialog luôn mở trên cửa sổ Burp đang dùng.
-          6. Kế thừa toàn bộ V_7.0_beta: tab Cây thẳng hàng, bảng API kiểu Burp History, Ma trận Role / NGHI BAC, Đẩy sang Logger++ / HAR, nhóm qua thư mục chung & Excel nhóm.
+          1. **Cổng chặn Proxy gọn**: chọn lựa chọn nào thì mới hiện cấu hình của lựa chọn đó; giải thích đúng cách chặn đang chọn; phần Thử & luật khác thu gọn; không tràn ngang.
+          2. **Cuộn chuột nhanh** trong mọi cửa sổ và tab.
+          3. **Action Workbench** ghi rõ là màn hình nâng cao của cùng danh sách luật; tab CRUD đổi tên "Danh sách luật (thêm / sửa / xóa)"; form tạo luật chỉ mở khi cần.
+          4. Kế thừa V_7.1_beta (Cổng chặn Proxy, mọi nút có phản hồi) và V_7.0_beta.
 
           Tải file \`${JAR}\` rồi nạp vào Burp (\`Extensions > Installed > Add > Java\`).
           EOF

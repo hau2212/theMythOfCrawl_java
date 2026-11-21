@@ -1104,6 +1104,10 @@ final class ApiTab {
                 resultModel.refresh();
                 refreshBar();
             }));
+            RoleResult curRole = selectedResult();
+            m.add(Ui.item("Đánh dấu lỗi..." + (g.openBugCount() > 0 ? "   (đang có " + g.openBugCount() + ")" : ""),
+                    t -> Icons.alertMark(t.danger.text(), 13), () -> BugsTab.BugMarkDialog.mark(ui, g, null,
+                            curRole != null && !curRole.original() ? curRole.roleKey() : "", "")));
             m.add(Ui.item("Gửi toàn bộ Roles của Group (" + g.results().size() + ")", Icons::sendAll,
                     () -> ui.send(listOf(g))));
             m.add(Ui.item("Đẩy Tab Role hiện tại -> Burp Repeater", Icons::repeater, this::pushSelectedRoles));

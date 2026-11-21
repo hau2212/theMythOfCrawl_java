@@ -178,6 +178,7 @@ final class LineageDialog {
 
         activeFloating = new FloatingRef(new WeakReference<>(ui), new WeakReference<>(dlg), view.switchTarget());
         dlg.setLocationRelativeTo(ui.root());
+        Ui.fastScroll(dlg.getContentPane());
         dlg.setVisible(true);
     }
 

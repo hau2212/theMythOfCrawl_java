@@ -379,52 +379,163 @@ public final class ActionEngine {
         return new String(msg, 0, end, StandardCharsets.ISO_8859_1);
     }
 
+    // =================================================================== V_8.2 ID pool by API family
+    /** Where a live ID came from (shown as "Nguồn" in the ID pool). */
+    public record LiveIdSource(String family, String id, String how, String api, int status, long atMs) {
+    }
+
+    private final ConcurrentHashMap<String, LiveIdSource> liveIdSources = new ConcurrentHashMap<>();
+
     /**
-     * Thu thập ID sống và tự động nhận diện Producer API từ mỗi cặp Request/Response đi qua Engine.
+     * "Họ API": the collection an endpoint acts on, from its path template. The API that CREATES an ID and
+     * the APIs that USE it share it:
+     * <pre>
+     *   POST   /api/a/b/c            -> /api/a/b/c
+     *   GET    /api/a/b/c/15         -> /api/a/b/c
+     *   DELETE /api/a/b/c/15         -> /api/a/b/c
+     *   POST   /api/orders/15/cancel -> /api/orders
+     *   GET    /api/orders/15/items  -> /api/orders/{id}/items
+     * </pre>
+     */
+    public static String familyKey(String path) {
+        String tpl = normalizePathTemplate(path);
+        List<String> segs = new ArrayList<>();
+        for (String p : tpl.split("/")) {
+            if (!p.isEmpty()) {
+                segs.add(p);
+            }
+        }
+        if (!segs.isEmpty() && isActionWord(segs.get(segs.size() - 1)) && segs.size() >= 2
+                && "{id}".equals(segs.get(segs.size() - 2))) {
+            segs.remove(segs.size() - 1);
+        }
+        if (!segs.isEmpty() && "{id}".equals(segs.get(segs.size() - 1))) {
+            segs.remove(segs.size() - 1);
+        }
+        if (!segs.isEmpty() && isActionWord(segs.get(segs.size() - 1)) && segs.size() >= 2) {
+            segs.remove(segs.size() - 1);
+        }
+        return segs.isEmpty() ? "/" : "/" + String.join("/", segs);
+    }
+
+    private static boolean isActionWord(String seg) {
+        return ACTION_PATH_HINT.matcher("/" + seg.toLowerCase(Locale.ROOT)).find();
+    }
+
+    /** True when the template has no ID after the family (a collection: list or create). */
+    static boolean isCollection(String path) {
+        String tpl = normalizePathTemplate(path);
+        return tpl.equals(familyKey(path));
+    }
+
+    /** JSON fields that name the ID of THIS family's objects: id, _id, uuid, guid, order_id / orderId for /orders. */
+    static List<String> familyIdsFromBody(byte[] body, String family) {
+        List<String> out = new ArrayList<>();
+        if (body == null || body.length == 0) {
+            return out;
+        }
+        String last = family.substring(family.lastIndexOf('/') + 1).toLowerCase(Locale.ROOT);
+        String singular = last.endsWith("ies") ? last.substring(0, last.length() - 3) + "y"
+                : (last.endsWith("s") && last.length() > 1 ? last.substring(0, last.length() - 1) : last);
+        Set<String> names = new LinkedHashSet<>(List.of("id", "_id", "uuid", "guid"));
+        for (String n : new String[] {singular, last}) {
+            names.add(n + "id");
+            names.add(n + "_id");
+            names.add(n + "uuid");
+            names.add(n + "_uuid");
+        }
+        Matcher m = JSON_ID_FIELD.matcher(new String(body, StandardCharsets.UTF_8));
+        while (m.find()) {
+            if (!names.contains(m.group(1).toLowerCase(Locale.ROOT))) {
+                continue;
+            }
+            String val = m.group(2) != null ? m.group(2) : m.group(3);
+            if (val != null && !val.isBlank() && !out.contains(val)) {
+                out.add(val);
+            }
+        }
+        return out;
+    }
+
+    /** Adds an ID to a family with its source. */
+    public void addLiveId(String family, String id, String how, String api, int status) {
+        addLiveId(family, id);
+        String fam = (family == null || family.isBlank()) ? "default" : family.toLowerCase(Locale.ROOT);
+        liveIdSources.put(fam + "|" + id, new LiveIdSource(fam, id, how, api, status, System.currentTimeMillis()));
+    }
+
+    /** Source of an ID in a family, or null (added by hand / imported). */
+    public LiveIdSource liveIdSource(String family, String id) {
+        String fam = (family == null || family.isBlank()) ? "default" : family.toLowerCase(Locale.ROOT);
+        return liveIdSources.get(fam + "|" + id);
+    }
+
+    /**
+     * Thu thập ID sống — V_8.2: CHỈ từ response 2xx, CHỈ cho đúng họ API của request (không gom ID bất kỳ):
+     * <ul>
+     *   <li>POST tới collection 2xx: ID vừa tạo (Location / trường id) -> "tạo mới", và API này là API tạo mới của họ;</li>
+     *   <li>GET collection 2xx: các trường id / {tên}_id của chính họ đó -> "danh sách";</li>
+     *   <li>GET / PUT / PATCH 1 đối tượng 2xx: ID trên path -> "đọc / sửa được";</li>
+     *   <li>DELETE 2xx (hoặc POST .../delete, /cancel...): ID đó -> đã dùng hết.</li>
+     * </ul>
      */
     public void harvest(String method, String path, byte[] request, byte[] response, int status, int gid) {
-        if (!autoHarvest || path == null) return;
-        String resource = extractResourceKey(path);
+        if (!autoHarvest || path == null || status < 200 || status >= 300) {
+            return;
+        }
+        String family = familyKey(path);
         String m = method == null ? "GET" : method.toUpperCase(Locale.ROOT);
-
-        // 1. Thu thập ID xuất hiện trên path của các request thành công
+        String api = m + " " + Text.stripQuery(path);
+        String lowerPath = Text.stripQuery(path).toLowerCase(Locale.ROOT);
+        boolean destructive = "DELETE".equals(m)
+                || lowerPath.contains("delete") || lowerPath.contains("remove") || lowerPath.contains("cancel")
+                || lowerPath.contains("destroy") || lowerPath.contains("revoke");
         List<String> pathIds = extractPathIds(path);
-        if ("DELETE".equals(m) && status >= 200 && status < 300) {
-            // Nếu DELETE thành công, đánh dấu các ID trong request này là đã bị tiêu thụ (đã xóa)
-            for (String id : detectIds(path, request)) {
+        if (destructive) {
+            for (String id : pathIds.isEmpty() ? detectIds(path, request) : pathIds) {
                 markConsumed(id);
             }
-        } else if (status >= 200 && status < 300) {
-            for (String id : pathIds) {
+            return;
+        }
+        boolean collection = isCollection(path);
+        if ("POST".equals(m) && collection) {
+            resourceProducers.put(family.toLowerCase(Locale.ROOT), gid);
+            String created = extractCreatedIdForFamily(response, family);
+            if (created != null) {
+                addLiveId(family, created, "tạo mới", api, status);
+            }
+            return;
+        }
+        if ("GET".equals(m) && collection) {
+            for (String id : familyIdsFromBody(bodyBytes(response), family)) {
                 if (!consumedIds.contains(id)) {
-                    addLiveId(resource, id);
+                    addLiveId(family, id, "danh sách", api, status);
                 }
             }
+            return;
         }
+        if (!pathIds.isEmpty()) {
+            String id = pathIds.get(pathIds.size() - 1);
+            if (!consumedIds.contains(id)) {
+                addLiveId(family, id, "GET".equals(m) ? "đọc được" : "sửa được", api, status);
+            }
+        }
+    }
 
-        // 2. Nếu là POST tạo mới thành công (không chứa từ khóa delete/cancel và không có ID sẵn trên path),
-        // ghi nhận đây là Producer cho tài nguyên này
-        if ("POST".equals(m) && status >= 200 && status < 300) {
-            String lowerPath = Text.stripQuery(path).toLowerCase(Locale.ROOT);
-            boolean isDeleteLike = lowerPath.contains("delete") || lowerPath.contains("remove") || lowerPath.contains("cancel");
-            if (!isDeleteLike && pathIds.isEmpty()) {
-                resourceProducers.putIfAbsent(resource, gid);
-            } else if (isDeleteLike) {
-                for (String id : detectIds(path, request)) {
-                    markConsumed(id);
-                }
+    /** The created ID of a POST to {@code family}: Location header, then the family's own id fields. */
+    public String extractCreatedIdForFamily(byte[] response, String family) {
+        if (response == null || response.length == 0) {
+            return null;
+        }
+        String loc = HttpBytes.header(response, "Location");
+        if (loc != null && !loc.isBlank()) {
+            List<String> locIds = extractPathIds(loc.trim());
+            if (!locIds.isEmpty()) {
+                return locIds.get(locIds.size() - 1);
             }
         }
-
-        // 3. Quét JSON body của Response 2xx để nạp các ID sống vào Giỏ ID
-        if (response != null && response.length > 0 && status >= 200 && status < 300) {
-            List<String> respIds = extractIdsFromBody(bodyBytes(response));
-            for (String id : respIds) {
-                if (!consumedIds.contains(id)) {
-                    addLiveId(resource, id);
-                }
-            }
-        }
+        List<String> ids = familyIdsFromBody(bodyBytes(response), family);
+        return ids.isEmpty() ? null : ids.get(0);
     }
 
     public void addLiveId(String resource, String id) {
@@ -457,19 +568,30 @@ public final class ActionEngine {
      * Lấy danh sách các ID sống khả dụng cho một API (ưu tiên cùng tài nguyên, loại trừ ID đang dùng và ID đã xóa).
      */
     public List<String> getAvailableLiveIds(String path, String excludeId) {
-        String resource = extractResourceKey(path);
         List<String> result = new ArrayList<>();
-        CopyOnWriteArrayList<String> byRes = resourceLiveIds.get(resource);
-        if (byRes != null) {
-            for (String id : byRes) {
-                if (!consumedIds.contains(id) && !id.equals(excludeId) && !result.contains(id)) {
-                    result.add(id);
+        String family = familyKey(path).toLowerCase(Locale.ROOT);
+        // newest first, IDs created by POST before IDs only seen in lists
+        CopyOnWriteArrayList<String> byFam = resourceLiveIds.get(family);
+        if (byFam != null) {
+            List<String> rev = new ArrayList<>(byFam);
+            java.util.Collections.reverse(rev);
+            for (String pass : new String[] {"tạo mới", null}) {
+                for (String id : rev) {
+                    LiveIdSource src = liveIdSources.get(family + "|" + id);
+                    boolean created = src != null && "tạo mới".equals(src.how());
+                    if ((pass == null || created) && !consumedIds.contains(id) && !id.equals(excludeId) && !result.contains(id)) {
+                        result.add(id);
+                    }
                 }
             }
         }
-        for (String id : globalLiveIds) {
-            if (!consumedIds.contains(id) && !id.equals(excludeId) && !result.contains(id)) {
-                result.add(id);
+        // IDs added by hand under the resource noun (legacy pool / CSV) still count for that noun
+        CopyOnWriteArrayList<String> byNoun = resourceLiveIds.get(extractResourceKey(path));
+        if (byNoun != null && byNoun != byFam) {
+            for (String id : byNoun) {
+                if (!consumedIds.contains(id) && !id.equals(excludeId) && !result.contains(id)) {
+                    result.add(id);
+                }
             }
         }
         return result;
@@ -495,8 +617,8 @@ public final class ActionEngine {
     }
 
     public Integer findProducerGid(String path) {
-        String resource = extractResourceKey(path);
-        return resourceProducers.get(resource);
+        Integer byFamily = resourceProducers.get(familyKey(path).toLowerCase(Locale.ROOT));
+        return byFamily != null ? byFamily : resourceProducers.get(extractResourceKey(path));
     }
 
     public void registerProducer(String resource, int gid) {

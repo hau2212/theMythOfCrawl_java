@@ -1102,6 +1102,85 @@ public final class Engine {
     }
 
     /** Gắn hoặc gỡ tag cho một nhóm API (đồng bộ xuống PlacementBook cho endpoint tương ứng). */
+    // =================================================================== V_8.2 bug marks ("Lỗi")
+    /** One row of the Lỗi tab: the API and one of its bug marks. */
+    public record BugRow(ApiGroup group, themythofcrawl.model.BugMark bug) {
+    }
+
+    /** Adds or updates a bug mark; keeps the BUG tag in sync so the API shows it everywhere (tree, table, filters). */
+    public void putBug(ApiGroup g, themythofcrawl.model.BugMark b) {
+        if (g == null || b == null) {
+            return;
+        }
+        if (tagCatalog.byId(ApiTagCatalog.TAG_BUG) == null) {
+            for (ApiTagCatalog.TagDef d : ApiTagCatalog.defaults()) {
+                if (ApiTagCatalog.TAG_BUG.equals(d.id())) {
+                    tagCatalog.upsert(d);
+                    saveTagCatalog();
+                }
+            }
+        }
+        g.putBug(b);
+        syncBugTag(g);
+        log("Lỗi: " + b.shortText() + (b.role().isEmpty() ? "" : " (role " + b.role() + ")") + " — " + g.method() + " "
+                + g.path(), g.gid());
+    }
+
+    public boolean removeBug(ApiGroup g, String bugId) {
+        if (g == null || !g.removeBug(bugId)) {
+            return false;
+        }
+        syncBugTag(g);
+        return true;
+    }
+
+    private void syncBugTag(ApiGroup g) {
+        if (g.openBugCount() > 0) {
+            g.addTag(ApiTagCatalog.TAG_BUG);
+        } else {
+            g.removeTag(ApiTagCatalog.TAG_BUG);
+        }
+        synchronized (this) {
+            stateDirty = true;
+            dirtyGroups.add(g);
+        }
+        changes.dirty(g);
+        changes.structure();
+    }
+
+    /** Every bug mark of every API (hidden ones included), newest first. */
+    public List<BugRow> bugRows() {
+        List<BugRow> out = new ArrayList<>();
+        List<ApiGroup> all = new ArrayList<>(groups());
+        all.addAll(hiddenGroups());
+        for (ApiGroup g : all) {
+            for (themythofcrawl.model.BugMark b : g.bugs()) {
+                out.add(new BugRow(g, b));
+            }
+        }
+        out.sort(Comparator.comparingLong((BugRow r) -> r.bug().atMs()).reversed());
+        return out;
+    }
+
+    /** Bug list as JSON for the test-management server. */
+    public String bugsJson() {
+        List<Object> out = new ArrayList<>();
+        for (BugRow r : bugRows()) {
+            Map<String, Object> m = new LinkedHashMap<>(r.bug().toMap());
+            m.put("type_label", r.bug().type().label);
+            m.put("owasp", r.bug().type().code);
+            m.put("severity_label", r.bug().severity().label);
+            m.put("status_label", r.bug().status().label);
+            m.put("api", r.group().gid());
+            m.put("method", r.group().method());
+            m.put("host", r.group().service().hostLabel());
+            m.put("path", r.group().path());
+            m.put("branch", r.group().branch());
+            out.add(m);
+        }
+        return Json.write(out);
+    }
+
     public int setApiTag(Collection<ApiGroup> gs, String tagId, boolean present) {
         if (gs == null || gs.isEmpty() || Text.blank(tagId)) {
             return 0;
@@ -2778,11 +2857,14 @@ public final class Engine {
             byte[] resp = sent.response();
             Integer st = HttpBytes.statusCode(resp);
             if (resp != null && st != null && st >= 200 && st < 300) {
-                String createdId = actionEngine.extractCreatedId(resp);
+                String createdId = actionEngine.extractCreatedIdForFamily(resp, ActionEngine.familyKey(producer.path()));
+                if (createdId == null) {
+                    createdId = actionEngine.extractCreatedId(resp);
+                }
                 actionEngine.harvest(producer.method(), producer.path(), freshProdReq, resp, st, producer.gid());
                 if (createdId != null) {
-                    log("Phương pháp 4 (Producer #" + producer.gid() + " " + producer.method() + " " + producer.path()
-                            + "): Đã tạo bản ghi mới trên Server -> thu được ID tươi [" + createdId + "] cho API #" + consumerGid, consumerGid);
+                    log("Tạo mới rồi gửi: gọi API tạo mới #" + producer.gid() + " " + producer.method() + " " + producer.path()
+                            + " -> Server trả ID mới [" + createdId + "] cho API #" + consumerGid, consumerGid);
                     return createdId;
                 }
             }

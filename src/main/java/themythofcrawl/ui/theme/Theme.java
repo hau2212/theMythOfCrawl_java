@@ -511,10 +511,11 @@ public final class Theme {
             case "teal" -> teal;
             case "cyan" -> cyan;
             case "bad", "danger", "red" -> danger;
+            case "critical", "high" -> critical;
             case "pink", "rose" -> pink;
             case "ok", "success", "green" -> success;
             case "emerald" -> emerald;
-            case "muted", "slate" -> slate;
+            case "muted", "slate", "neutral" -> slate;
             default -> info;
         };
     }

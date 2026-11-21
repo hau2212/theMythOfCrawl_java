@@ -191,6 +191,7 @@ public final class MainPanel {
     final ExcelTab excel;
     final AuditTab audit;
     final AccessMatrixTab matrix;
+    final BugsTab bugs;
 
     public MainPanel(Engine engine, Workspaces workspaces, UiHost host, String projectId) {
         this.engine = engine;
@@ -219,19 +220,21 @@ public final class MainPanel {
         treeTab = new TreeTab(this);
         audit = new AuditTab(this);
         matrix = new AccessMatrixTab(this);
+        bugs = new BugsTab(this);
         // V_7.0 tab groups: Cây first (where most of the work happens), reports and settings grouped
         reportTabs.addTab("Lịch sử", null, history.panel, "Cây lịch sử theo nhánh và báo cáo trực quan");
         reportTabs.addTab("Excel", null, excel.panel, "Đối chiếu file Excel: dòng nào đã bắt, số lần gặp, ở đâu");
         settingsTabs.addTab("Cấu hình", null, settings.panel, "Bộ lọc bắt, tốc độ gửi, Excel, copy, workspace");
         settingsTabs.addTab("Log", null, log.panel, "Nhật ký theo nhánh / API, xuất Excel");
         Object[][] t = {
-            {"Cây", treeTab.panel, "Cây nhánh dạng bảng thẳng hàng: Nhánh | Method | Path | Status | Length | Kết quả Role (Alt+1)"},
-            {"API", api.panel, "Bảng API kiểu Burp HTTP History, kết quả từng role, Repeater gộp (Alt+2)"},
-            {"Ma trận Role", matrix.panel, "Crawl N role không trùng: Thấy bởi x Gọi được -> NGHI BAC, test case (Alt+3)"},
-            {"Báo cáo", reportTabs, "Lịch sử trực quan và độ phủ Excel (Alt+4)"},
-            {"Roles", roles.panel, "Các role / profile (header, cookie, JWT) và profile API gốc (Alt+5)"},
-            {"Cần xử lý", audit.panel, "Xác nhận vị trí, giữ chỗ, API trùng & ẩn, nhật ký vị trí (Alt+6)"},
-            {"Cài đặt", settingsTabs, "Cấu hình và Log (Alt+7)"}};
+            {"Cây", treeTab.panel, "Cây nhánh: mọi API thẳng cột Method | Path | Status | Length | Kết quả Role (Alt+1)"},
+            {"API", api.panel, "Bảng API kiểu Burp HTTP History, kết quả từng vai trò (Alt+2)"},
+            {"Phân quyền", matrix.panel, "Ma trận vai trò: Thấy trong UI x Gọi được -> nghi lỗi phân quyền (Alt+3)"},
+            {"Lỗi", bugs.panel, "Các API đã đánh dấu lỗi: thống kê theo loại / mức độ / trạng thái, xuất báo cáo (Alt+4)"},
+            {"Báo cáo", reportTabs, "Lịch sử trực quan và độ phủ Excel (Alt+5)"},
+            {"Vai trò", roles.panel, "Tài khoản test: token / cookie / JWT của từng vai trò (Alt+6)"},
+            {"Duyệt", audit.panel, "API mới cần xác nhận vị trí, giữ chỗ, API trùng & ẩn (Alt+7)"},
+            {"Cài đặt", settingsTabs, "Cấu hình và Log (Alt+8)"}};
         for (Object[] x : t) {
             tabs.addTab((String) x[0], null, (Component) x[1], (String) x[2]);
         }
@@ -240,6 +243,7 @@ public final class MainPanel {
         settingsTabs.addChangeListener(e -> tick(true));
         main.add(tabs, BorderLayout.CENTER);
         root.add(toastPane, BorderLayout.CENTER);
+        Ui.fastScroll(root);
         root.addComponentListener(new java.awt.event.ComponentAdapter() {
             @Override
             public void componentResized(java.awt.event.ComponentEvent e) {
@@ -1358,6 +1362,7 @@ public final class MainPanel {
             audit.stale = true;
             log.stale = true;
             matrix.stale = true;
+            bugs.stale = true;
         }
         if (!b.dirty().isEmpty()) {
             treeTab.stale = true;
@@ -1365,6 +1370,7 @@ public final class MainPanel {
             excel.stale |= b.dirty().stream().anyMatch(g -> g.target() != null);
             audit.stale = true;
             matrix.stale = true;
+            bugs.stale = true;
         }
         api.refreshVisible(force);
         treeTab.refreshIfVisible();
@@ -1373,6 +1379,7 @@ public final class MainPanel {
         audit.refreshIfVisible();
         log.refreshIfVisible();
         matrix.refreshIfVisible();
+        bugs.refreshIfVisible();
         boolean queueActive = queuePeak > 0 || engine.queue().queued() + engine.queue().inFlight() > 0;
         if (b.status() || b.structure() || force || !b.added().isEmpty()) {
             syncHeader();

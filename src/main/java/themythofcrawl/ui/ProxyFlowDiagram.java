@@ -37,7 +37,7 @@ final class ProxyFlowDiagram extends JComponent {
     @Override
     public Dimension getPreferredSize() {
         Theme th = Theme.current();
-        return new Dimension(th.scaled(600), th.scaled(170));
+        return new Dimension(th.scaled(480), th.scaled(150));
     }
 
     @Override
@@ -54,7 +54,7 @@ final class ProxyFlowDiagram extends JComponent {
             g2.setColor(th.border);
             g2.drawRect(0, 0, w - 1, h - 1);
 
-            int bw = Math.min(th.scaled(190), Math.max(th.scaled(110), w / 5));
+            int bw = Math.min(th.scaled(190), Math.max(th.scaled(96), w / 5));
             int bh = th.scaled(46);
             int top = th.scaled(30);
             int bx1 = th.scaled(16);
@@ -105,7 +105,7 @@ final class ProxyFlowDiagram extends JComponent {
             g2.setFont(th.baseFont);
             g2.setColor(th.fg);
             FontMetrics fm = g2.getFontMetrics();
-            String line1 = !on ? "Cổng chặn TẮT: mọi request đi thẳng, JCrawl chỉ ghi lại API." : effect.what;
+            String line1 = !on ? "Cổng chặn TẮT: mọi request đi thẳng, JCrawl chỉ ghi lại API." : "Sơ đồ cho request KHỚP phạm vi + method đã chọn.";
             String line2 = !on ? "" : "Request KHÔNG khớp phạm vi / method đã chọn: vẫn đi thẳng lên Server như bình thường.";
             int ty = top + bh + th.scaled(40);
             drawWrapped(g2, fm, line1, th.scaled(16), ty, w - th.scaled(32));

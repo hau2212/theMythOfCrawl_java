@@ -133,6 +133,26 @@ public final class Ui {
     }
 
     /**
+     * V_7.2: mouse-wheel scrolling that moves ~3 text lines per notch instead of 1 px, for every scroll pane
+     * inside {@code root} (dialogs built from plain panels otherwise scroll painfully slowly).
+     */
+    public static void fastScroll(Component root) {
+        if (root instanceof javax.swing.JScrollPane sp) {
+            if (sp.getVerticalScrollBar().getUnitIncrement() < 24) {
+                sp.getVerticalScrollBar().setUnitIncrement(24);
+            }
+            if (sp.getHorizontalScrollBar().getUnitIncrement() < 24) {
+                sp.getHorizontalScrollBar().setUnitIncrement(24);
+            }
+        }
+        if (root instanceof java.awt.Container c) {
+            for (Component k : c.getComponents()) {
+                fastScroll(k);
+            }
+        }
+    }
+
+    /**
      * Owner for a dialog opened from {@code c}: its window when that window is on screen, otherwise the
      * window the user is working in — so a dialog never opens hidden behind Burp.
      */

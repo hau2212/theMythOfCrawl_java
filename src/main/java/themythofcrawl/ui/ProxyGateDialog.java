@@ -4,7 +4,6 @@ import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
-import java.awt.GridLayout;
 import java.awt.Window;
 import java.net.URI;
 import java.util.ArrayList;
@@ -52,18 +51,30 @@ final class ProxyGateDialog {
             ui.syncHeader();
             ui.tick(true);
         });
-        dlg.setContentPane(new JScrollPane(gate.panel));
-        dlg.setSize(new Dimension(Theme.current().scaled(900), Theme.current().scaled(820)));
+        JScrollPane sp = new JScrollPane(gate.panel);
+        sp.setBorder(BorderFactory.createEmptyBorder());
+        dlg.setContentPane(sp);
+        Ui.fastScroll(sp);
+        dlg.setSize(new Dimension(Theme.current().scaled(860), Theme.current().scaled(720)));
         dlg.setLocationRelativeTo(ui.root());
         dlg.setVisible(true);
     }
 
+    static final class TrackWidthPanel extends JPanel implements javax.swing.Scrollable {
+        @Override public Dimension getPreferredScrollableViewportSize() { return getPreferredSize(); }
+        @Override public int getScrollableUnitIncrement(java.awt.Rectangle r, int o, int d) { return 24; }
+        @Override public int getScrollableBlockIncrement(java.awt.Rectangle r, int o, int d) { return Math.max(48, r.height - 48); }
+        @Override public boolean getScrollableTracksViewportWidth() { return true; }
+        @Override public boolean getScrollableTracksViewportHeight() { return false; }
+    }
+
     /** The panel itself (also used headless by tests / previews). */
     static final class Gate {
-        final JPanel panel = new JPanel();
+        /** Tracks the viewport width so nothing is cut at the right edge; only vertical scrolling. */
+        final JPanel panel = new TrackWidthPanel();
         final ModernToggleSwitch master = new ModernToggleSwitch(false);
         final JLabel status = new JLabel();
-        final themythofcrawl.ui.kit.WrappedText sentence = themythofcrawl.ui.kit.WrappedText.body(" ", 820);
+        final themythofcrawl.ui.kit.WrappedText sentence = themythofcrawl.ui.kit.WrappedText.body(" ", 560);
         final JLabel problem = new JLabel(" ");
         final ProxyFlowDiagram diagram = new ProxyFlowDiagram();
         final Map<ProxyGate.Scope, JRadioButton> scopeButtons = new LinkedHashMap<>();
@@ -76,8 +87,14 @@ final class ProxyGateDialog {
         final JLabel dirty = new JLabel(" ");
         final JTextField testUrl = new JTextField(34);
         final JComboBox<String> testMethod = new JComboBox<>(new String[] {"POST", "PUT", "PATCH", "DELETE", "GET"});
-        final themythofcrawl.ui.kit.WrappedText testResult = themythofcrawl.ui.kit.WrappedText.body(" ", 820);
-        final themythofcrawl.ui.kit.WrappedText others = themythofcrawl.ui.kit.WrappedText.body(" ", 820);
+        final themythofcrawl.ui.kit.WrappedText testResult = themythofcrawl.ui.kit.WrappedText.body(" ", 560);
+        final themythofcrawl.ui.kit.WrappedText others = themythofcrawl.ui.kit.WrappedText.body(" ", 560);
+        final JPanel scopeDetail = new JPanel(new WrapLayout(FlowLayout.LEFT, 6, 2));
+        final themythofcrawl.ui.kit.WrappedText effectWhat = themythofcrawl.ui.kit.WrappedText.body(" ", 560);
+        final themythofcrawl.ui.kit.WrappedText effectWhen = themythofcrawl.ui.kit.WrappedText.muted(" ", 560);
+        final JLabel getWarn = new JLabel(" ");
+        JPanel extraPanel;
+        private ProxyGate.Scope shownScope;
         private final Engine engine;
         private final Runnable onChanged;
         private boolean loading;
@@ -101,7 +118,8 @@ final class ProxyGateDialog {
 
             // ---- step 1: which requests
             ButtonGroup sg = new ButtonGroup();
-            JPanel scope = new JPanel(new GridLayout(0, 1, 0, 2));
+            JPanel scope = new JPanel();
+            scope.setLayout(new BoxLayout(scope, BoxLayout.Y_AXIS));
             for (ProxyGate.Scope s : ProxyGate.Scope.values()) {
                 JRadioButton rb = new JRadioButton(s.label);
                 sg.add(rb);
@@ -124,11 +142,14 @@ final class ProxyGateDialog {
             }
             branchBox.setEditable(true);
             pathField.setToolTipText("Ví dụ: /api/orders (mọi path bắt đầu bằng /api/orders/) hoặc /api/*/delete (dấu * = bất kỳ)");
-            scope.add(scopeButtons.get(ProxyGate.Scope.ALL_HOSTS));
-            scope.add(Ui.flow(FlowLayout.LEFT, scopeButtons.get(ProxyGate.Scope.HOST), Ui.muted("host:"), hostBox));
-            scope.add(Ui.flow(FlowLayout.LEFT, scopeButtons.get(ProxyGate.Scope.HOST_PATH), Ui.muted("path:"), pathField,
-                    Ui.muted("(host ở dòng trên · * = bất kỳ)")));
-            scope.add(Ui.flow(FlowLayout.LEFT, scopeButtons.get(ProxyGate.Scope.BRANCH), branchBox));
+            // V_7.2: only the selected option's settings are shown, right under the options
+            JPanel radios = new JPanel(new WrapLayout(FlowLayout.LEFT, 4, 2));
+            for (ProxyGate.Scope sc : ProxyGate.Scope.values()) {
+                radios.add(scopeButtons.get(sc));
+            }
+            scope.add(radios);
+            scopeDetail.setBorder(BorderFactory.createEmptyBorder(0, 22, 0, 0));
+            scope.add(scopeDetail);
             hostBox.addActionListener(Ui.safe(e -> changed()));
             branchBox.addActionListener(Ui.safe(e -> changed()));
             pathField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
@@ -139,7 +160,7 @@ final class ProxyGateDialog {
             add(step("Bước 1 — Chặn request nào?", scope));
 
             // ---- step 2: methods
-            JPanel methods = Ui.flow(FlowLayout.LEFT);
+            JPanel methods = new JPanel(new WrapLayout(FlowLayout.LEFT, 4, 2));
             for (String m : List.of("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS")) {
                 JCheckBox cb = new JCheckBox(m);
                 methodBoxes.put(m, cb);
@@ -150,30 +171,28 @@ final class ProxyGateDialog {
             methods.add(Ui.secondaryBtn("Tất cả", null, () -> setMethods(new LinkedHashSet<>(methodBoxes.keySet()))));
             JPanel step2 = new JPanel(new BorderLayout());
             step2.add(methods, BorderLayout.CENTER);
-            step2.add(Ui.muted("GET thường là tải trang / đọc dữ liệu — chặn GET sẽ làm trình duyệt đứng ở mọi trang."), BorderLayout.SOUTH);
+            step2.add(getWarn, BorderLayout.SOUTH);
+            getWarn.setForeground(th.warning.text());
             add(step("Bước 2 — Method nào?", step2));
 
             // ---- step 3: what to do
             ButtonGroup eg = new ButtonGroup();
-            JPanel effects = new JPanel(new GridLayout(0, 1, 0, 6));
+            JPanel effectRadios = new JPanel(new WrapLayout(FlowLayout.LEFT, 4, 2));
             for (ProxyGate.Effect ef : ProxyGate.Effect.values()) {
                 JRadioButton rb = new JRadioButton(ef.label);
-                rb.setFont(th.boldFont);
                 eg.add(rb);
                 effectButtons.put(ef, rb);
                 rb.addActionListener(Ui.safe(e -> changed()));
-                JPanel card = new JPanel(new BorderLayout(0, 0));
-                card.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(th.border),
-                        BorderFactory.createEmptyBorder(4, 6, 4, 6)));
-                card.add(rb, BorderLayout.NORTH);
-                themythofcrawl.ui.kit.WrappedText what = themythofcrawl.ui.kit.WrappedText.body(ef.what, 800);
-                what.setBorder(BorderFactory.createEmptyBorder(0, 22, 0, 0));
-                themythofcrawl.ui.kit.WrappedText when = themythofcrawl.ui.kit.WrappedText.muted("Dùng khi: " + ef.when, 800);
-                when.setBorder(BorderFactory.createEmptyBorder(0, 22, 0, 0));
-                card.add(what, BorderLayout.CENTER);
-                card.add(when, BorderLayout.SOUTH);
-                effects.add(card);
+                effectRadios.add(rb);
             }
+            JPanel effectCard = new JPanel(new BorderLayout(0, 2));
+            effectCard.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(th.border),
+                    BorderFactory.createEmptyBorder(6, 10, 6, 10)));
+            effectCard.add(effectWhat, BorderLayout.CENTER);
+            effectCard.add(effectWhen, BorderLayout.SOUTH);
+            JPanel effects = new JPanel(new BorderLayout(0, 4));
+            effects.add(effectRadios, BorderLayout.NORTH);
+            effects.add(effectCard, BorderLayout.CENTER);
             add(step("Bước 3 — Làm gì với request bị chặn?", effects));
 
             // ---- apply row
@@ -205,8 +224,26 @@ final class ProxyGateDialog {
             test.add(Ui.flow(FlowLayout.LEFT, testMethod, testUrl,
                     Ui.secondaryBtn("Thử", t -> Icons.playTest(t.fg, 12), this::runTest)), BorderLayout.NORTH);
             test.add(testResult, BorderLayout.CENTER);
-            add(step("Thử với 1 request (không gửi gì, theo cấu hình đã ÁP DỤNG)", test));
-            add(step("Luật riêng khác đang bật (luật cụ thể thắng cổng chặn chung)", others));
+            JPanel extra = new JPanel();
+            extra.setLayout(new BoxLayout(extra, BoxLayout.Y_AXIS));
+            JPanel t1 = step("Thử với 1 request (không gửi gì, theo cấu hình đã ÁP DỤNG)", test);
+            JPanel t2 = step("Luật riêng khác đang bật (luật cụ thể thắng cổng chặn chung)", others);
+            t1.setAlignmentX(Component.LEFT_ALIGNMENT);
+            t2.setAlignmentX(Component.LEFT_ALIGNMENT);
+            extra.add(t1);
+            extra.add(javax.swing.Box.createVerticalStrut(8));
+            extra.add(t2);
+            extra.setVisible(false);
+            JButton extraToggle = Ui.secondaryBtn("Mở: Thử với 1 request & luật khác", t -> Icons.playTest(t.fg, 12));
+            extraToggle.addActionListener(Ui.safe(e -> {
+                extra.setVisible(!extra.isVisible());
+                extraToggle.setText(extra.isVisible() ? "Thu lại phần Thử & luật khác" : "Mở: Thử với 1 request & luật khác");
+                panel.revalidate();
+                panel.repaint();
+            }));
+            add(Ui.flow(FlowLayout.LEFT, extraToggle));
+            add(extra);
+            this.extraPanel = extra;
 
             master.onChange(on -> {
                 if (!loading) {
@@ -310,9 +347,37 @@ final class ProxyGateDialog {
             problem.setText(p == null ? " " : p);
             apply.setEnabled(p == null);
             dirty.setText(pending ? "Chưa áp dụng" : " ");
-            hostBox.setEnabled(s.scope() == ProxyGate.Scope.HOST || s.scope() == ProxyGate.Scope.HOST_PATH);
-            pathField.setEnabled(s.scope() == ProxyGate.Scope.HOST_PATH);
-            branchBox.setEnabled(s.scope() == ProxyGate.Scope.BRANCH);
+            if (s.scope() != shownScope) {
+                shownScope = s.scope();
+                scopeDetail.removeAll();
+                switch (s.scope()) {
+                    case HOST -> {
+                        scopeDetail.add(Ui.muted("Host:"));
+                        scopeDetail.add(hostBox);
+                        scopeDetail.add(Ui.muted("(cũng khớp subdomain, vd api.<host>)"));
+                    }
+                    case HOST_PATH -> {
+                        scopeDetail.add(Ui.muted("Host:"));
+                        scopeDetail.add(hostBox);
+                        scopeDetail.add(Ui.muted("Path:"));
+                        scopeDetail.add(pathField);
+                        scopeDetail.add(Ui.muted("/api/orders = mọi path bên dưới · * = bất kỳ"));
+                    }
+                    case BRANCH -> {
+                        scopeDetail.add(Ui.muted("Nhánh:"));
+                        scopeDetail.add(branchBox);
+                        scopeDetail.add(Ui.muted("(kèm nhánh con · theo Đích đang crawl)"));
+                    }
+                    default -> scopeDetail.add(Ui.muted("Áp dụng cho request tới bất kỳ host nào."));
+                }
+                scopeDetail.revalidate();
+                scopeDetail.repaint();
+            }
+            effectWhat.setText(s.effect().what);
+            effectWhen.setText("Dùng khi: " + s.effect().when);
+            getWarn.setText(s.methods().contains("GET")
+                    ? "Đang chặn cả GET: trình duyệt sẽ đứng ở mọi lần tải trang / đọc dữ liệu khớp phạm vi."
+                    : "Không chặn GET (tải trang / đọc dữ liệu) — nên giữ như vậy.");
             StringBuilder sb = new StringBuilder();
             int n = 0;
             for (ActionPolicy pol : engine.actionEngine().policyLedger().all()) {
